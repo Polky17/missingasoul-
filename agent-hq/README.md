@@ -13,7 +13,7 @@ Live page: https://claude.ai/artifact/2h5KQ1YfzAioCWhBJXks8P (private until shar
 
 ## How it stays current
 
-The scheduled task "Agent HQ sweep" runs at 6:47am and 5:47pm UK time. It reads the session list and the scheduled task list, rebuilds three data files (agents, scheduled and places) and swaps them into the dashboard. Its full instructions are in `sweep-prompt.md`.
+The scheduled task "Agent HQ sweep" runs at 6:47am and 5:47pm UK time. It fires into the chat that built the dashboard (https://claude.ai/code/session_01XxREVV3kFBAPTyrRkz3fkF), because a scheduled task that starts a fresh chat cannot read the session list. Each run reads the session list and the scheduled task list, rebuilds three data files (agents, scheduled and places) and swaps them into the dashboard. Its full instructions are in `sweep-prompt.md`.
 
 ## Files
 
