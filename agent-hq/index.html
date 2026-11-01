@@ -1,0 +1,393 @@
+<meta name="dash-one-writer">
+<style>
+#dash-root { --dash-gutter: clamp(16px, 4vw, 40px); }
+.hq { display: flex; flex-direction: column; gap: var(--cds-gap-xl); font-family: var(--font-anthropic-sans); max-width: 82rem; margin-inline: auto; }
+.hq a { color: inherit; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.hq a:hover { text-decoration-thickness: 2px; }
+.hq a:focus-visible, .hq button:focus-visible, .hq input:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+
+.hq-head { display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
+.hq-head h1 { margin: 0; font-family: var(--font-anthropic-serif); font-weight: 400; font-size: calc(var(--cds-font-size-title) * 1.35); line-height: 1.1; text-wrap: balance; }
+.hq-take { margin: 0; font-size: var(--cds-font-size-heading); max-width: 62ch; text-wrap: pretty; }
+.hq .hq-take b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.hq-scope { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); max-width: 70ch; }
+
+.hq { --hq-wait: var(--color-warn); --hq-rev: var(--color-fg); --hq-run: var(--color-ok); --hq-done: var(--color-fg-muted); }
+.is-waiting { --hq-c: var(--hq-wait); }
+.is-review { --hq-c: var(--hq-rev); }
+.is-running { --hq-c: var(--hq-run); }
+.is-done, .is-failed { --hq-c: var(--hq-done); }
+.is-failed { --hq-c: var(--color-bad); }
+
+.hq-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: var(--cds-gap-md); }
+.hq-tile { appearance: none; font: inherit; color: inherit; text-align: left; cursor: pointer; background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-xs); position: relative; overflow: hidden; }
+.hq-tile::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--hq-c); }
+.hq-tile[aria-pressed="true"] { border-color: var(--color-fg); }
+.hq-tile-lbl { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hq-num { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: calc(var(--cds-font-size-title) * 1.25); line-height: 1.1; font-variant-numeric: tabular-nums; min-height: 1.1em; }
+.hq-tile-hint { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+
+.hq-sec { display: flex; flex-direction: column; gap: var(--cds-gap-md); scroll-margin-top: var(--cds-gap-xl); }
+.hq-sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--cds-gap-sm) var(--cds-gap-lg); }
+.hq-sec h2 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+.hq-note { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.hq-empty { margin: 0; color: var(--color-fg-muted); padding: var(--cds-pad-lg); border: 1px dashed var(--color-border-line); border-radius: var(--cds-radius); }
+
+.hq-pill { display: inline-flex; align-items: center; gap: 6px; font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); color: var(--hq-c); white-space: nowrap; }
+.hq-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--hq-c); flex: none; }
+
+.hq-asks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: var(--cds-gap-md); min-height: 8rem; }
+.hq-ask { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-sm); min-width: 0; }
+.hq-ask-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-xs) var(--cds-gap-sm); }
+.hq-area-name { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hq-old { font-size: var(--cds-font-size-caption); color: var(--color-bad); }
+.hq-ask-job { font-weight: var(--cds-font-weight-medium); overflow-wrap: anywhere; }
+.hq-ask-text { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.hq-meta { margin: 0; margin-top: auto; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); overflow-wrap: anywhere; }
+
+.hq-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-sm); }
+.hq-chip { appearance: none; font: inherit; font-size: var(--cds-font-size-caption); color: var(--color-fg); background: transparent; border: 1px solid var(--color-border-line); border-radius: 999px; padding: var(--cds-pad-xs) var(--cds-pad-sm); cursor: pointer; }
+.hq-chip[aria-pressed="true"] { background: var(--color-fg); color: var(--color-bg); border-color: var(--color-fg); }
+.hq-q { font: inherit; font-size: var(--cds-font-size-caption); color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-xs) var(--cds-pad-sm); min-width: 0; flex: 1 1 14rem; max-width: 22rem; }
+
+.hq-areas { columns: 23rem auto; column-gap: var(--cds-gap-md); min-height: 10rem; }
+.hq-area { break-inside: avoid; margin: 0 0 var(--cds-gap-md); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
+.hq-area-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--cds-gap-xs) var(--cds-gap-sm); padding-bottom: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); }
+.hq-area-head h3 { margin: 0; font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-heading); }
+.hq-area-count { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.hq-jobs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.hq-job { display: flex; flex-direction: column; gap: 4px; padding: var(--cds-pad-sm) 0; border-bottom: 1px solid var(--color-border-line); min-width: 0; }
+.hq-job:last-child { border-bottom: 0; padding-bottom: 0; }
+.hq-job-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--cds-gap-sm); }
+.hq-job-title { font-weight: var(--cds-font-weight-medium); overflow-wrap: anywhere; }
+.hq-did { margin: 0; line-height: 1.45; color: var(--color-fg); overflow-wrap: anywhere; }
+.is-done .hq-did { color: var(--color-fg-muted); }
+.hq-job-ask { margin: 0; line-height: 1.45; overflow-wrap: anywhere; }
+.hq-job-ask::before { content: "Needs "; color: var(--hq-c); font-weight: var(--cds-font-weight-medium); }
+
+.hq-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-sm); min-width: 0; }
+.hq-scroll { overflow-x: auto; }
+.hq-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-body); }
+.hq-table th { text-align: left; font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.hq-table td { padding: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+.hq-table tbody tr:last-child td { border-bottom: 0; }
+.hq-table th:first-child, .hq-table td:first-child { padding-left: 0; }
+.hq-where td:nth-child(n+3), .hq-where th:nth-child(n+3) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hq-where td:first-child { font-weight: var(--cds-font-weight-medium); white-space: nowrap; }
+.hq-where td:nth-child(2) { color: var(--color-fg-muted); min-width: 14rem; }
+.hq-sched td:first-child { font-weight: var(--cds-font-weight-medium); min-width: 12rem; }
+.hq-sched td:nth-child(2), .hq-sched td:nth-child(4), .hq-sched td:nth-child(6) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hq-sched tr.is-paused td:nth-child(3) { color: var(--color-warn); font-weight: var(--cds-font-weight-medium); }
+.hq-sched tr.is-on td:nth-child(3) { color: var(--color-ok); font-weight: var(--cds-font-weight-medium); }
+.hq-sched tr.is-paused td:nth-child(6) { color: var(--color-fg-muted); }
+.hq-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr)); gap: var(--cds-gap-md); align-items: start; }
+
+.hq [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+.hq-fail { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 6rem; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); column-span: all; grid-column: 1 / -1; }
+.hq-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+@media (prefers-reduced-motion: no-preference) {
+  .hq-ask, .hq-area { animation: hq-in var(--cds-dur-slow) var(--cds-ease-out) both; }
+  @keyframes hq-in { from { opacity: .4; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+}
+</style>
+
+<div class="hq" id="top">
+  <header class="hq-head">
+    <h1>Agent HQ</h1>
+    <p class="hq-take" data-take="some"><b data-draw="sum" data-k="needs" data-source="summary" data-field="needs" data-row="0">—</b> agent chats need something from you, and <b data-draw="sum" data-k="stale" data-source="summary" data-field="stale" data-row="0">—</b> of those have sat for over a week.</p>
+    <p class="hq-take" data-take="none" hidden>Nothing is waiting on you right now. Every agent chat has either finished or is still working.</p>
+    <p class="hq-scope">Every Claude chat from your laptop, phone and the cloud over the last 7 days, plus older chats still waiting on you, and your scheduled tasks. The sweep refreshes it at 6:47am and 5:47pm UK time.</p>
+  </header>
+
+  <div class="hq-tiles" role="group" aria-label="Filter the chats below by status">
+    <button class="hq-tile is-waiting" type="button" data-status="waiting" aria-pressed="false">
+      <span class="hq-tile-lbl">Waiting on you</span>
+      <span class="hq-num dash-skeleton" data-draw="sum" data-k="waiting" data-source="summary" data-field="waiting" data-row="0">—</span>
+      <span class="hq-tile-hint">Stopped until you reply</span>
+    </button>
+    <button class="hq-tile is-review" type="button" data-status="review" aria-pressed="false">
+      <span class="hq-tile-lbl">Ready to review</span>
+      <span class="hq-num dash-skeleton" data-draw="sum" data-k="review" data-source="summary" data-field="review" data-row="0">—</span>
+      <span class="hq-tile-hint">Finished, needs your eyes</span>
+    </button>
+    <button class="hq-tile is-running" type="button" data-status="running" aria-pressed="false">
+      <span class="hq-tile-lbl">Running</span>
+      <span class="hq-num dash-skeleton" data-draw="sum" data-k="running" data-source="summary" data-field="running" data-row="0">—</span>
+      <span class="hq-tile-hint">Working right now</span>
+    </button>
+    <button class="hq-tile is-done" type="button" data-status="done" aria-pressed="false">
+      <span class="hq-tile-lbl">Done, last 7 days</span>
+      <span class="hq-num dash-skeleton" data-draw="sum" data-k="done" data-source="summary" data-field="done" data-row="0">—</span>
+      <span class="hq-tile-hint">Finished or closed by you</span>
+    </button>
+  </div>
+
+  <section class="hq-sec" id="waiting">
+    <div class="hq-sec-head">
+      <h2>Waiting on you</h2>
+      <p class="hq-note">Newest first. Each card opens the chat that is asking.</p>
+    </div>
+    <div class="hq-asks dash-skeleton" data-draw="waitlist" data-source="agents"></div>
+    <p class="hq-empty" data-empty="waiting" hidden>No agent is waiting on you.</p>
+  </section>
+
+  <section class="hq-sec" id="areas">
+    <div class="hq-sec-head">
+      <h2>By client or area</h2>
+      <p class="hq-note">What each agent did and where it saved the work.</p>
+    </div>
+    <div class="hq-controls">
+      <button class="hq-chip" type="button" data-status="all" aria-pressed="true">All</button>
+      <button class="hq-chip" type="button" data-status="waiting" aria-pressed="false">Waiting on you</button>
+      <button class="hq-chip" type="button" data-status="review" aria-pressed="false">Ready to review</button>
+      <button class="hq-chip" type="button" data-status="running" aria-pressed="false">Running</button>
+      <button class="hq-chip" type="button" data-status="done" aria-pressed="false">Done</button>
+      <input class="hq-q" id="hq-q" type="search" placeholder="Search jobs, clients and asks" aria-label="Search the agent chats">
+    </div>
+    <div class="hq-areas dash-skeleton" data-draw="areas" data-source="agents"></div>
+    <p class="hq-empty" data-empty="areas" hidden>No chats match this filter. Pick All or clear the search.</p>
+  </section>
+
+  <div class="hq-two">
+    <section class="hq-sec hq-card" id="saved">
+      <div class="hq-sec-head">
+        <h2>Where it's saved</h2>
+        <p class="hq-note">Counts from the last 7 days</p>
+      </div>
+      <div class="hq-scroll">
+        <table class="hq-table hq-where" data-source="where" data-row-key="place">
+          <thead><tr><th data-field="place">Place</th><th data-field="what">What goes there</th><th data-field="chats">Chats</th><th data-field="tasks">Scheduled</th></tr></thead>
+          <tbody data-draw="where"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="hq-sec hq-card" id="scheduled">
+      <div class="hq-sec-head">
+        <h2>Scheduled tasks</h2>
+        <p class="hq-note">UK time</p>
+      </div>
+      <div class="hq-scroll">
+        <table class="hq-table hq-sched" data-source="scheduled" data-row-key="name">
+          <thead><tr><th data-field="name">Task</th><th data-field="schedule">Runs</th><th data-field="state">State</th><th data-field="last_run_text">Last run</th><th data-field="last_result">Result</th><th data-field="next_run_text">Next run</th><th data-field="reports_to">Reports to</th></tr></thead>
+          <tbody data-draw="sched"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+dash.calc('summary', {
+  inputs: ['agents'],
+  title: 'Agent chat counts',
+  description: 'Counts the agent chats by status, and how many of the ones waiting on you have been idle for a week or more.',
+  fn: (agents) => {
+    const n = (st) => agents.filter((a) => a.status === st).length;
+    const needs = agents.filter((a) => a.status === 'waiting' || a.status === 'review');
+    return [{
+      waiting: n('waiting'),
+      review: n('review'),
+      running: n('running'),
+      done: n('done'),
+      needs: needs.length,
+      stale: needs.filter((a) => Number(a.idle_days) >= 7).length,
+    }];
+  },
+});
+
+dash.calc('where', {
+  inputs: ['places', 'agents', 'scheduled'],
+  title: 'Where agent work is saved',
+  description: 'For each place, how many agent chats and scheduled tasks say they saved work there.',
+  fn: (places, agents, scheduled) => {
+    const has = (row, place) => String(row.saved || '').split(' · ').includes(place);
+    return places.map((p) => ({
+      place: p.place,
+      what: p.what,
+      link: p.link,
+      chats: agents.filter((a) => has(a, p.place)).length,
+      tasks: scheduled.filter((s) => has(s, p.place)).length,
+    }));
+  },
+});
+</script>
+
+<script>
+window.HQ = (() => {
+  const LABEL = { waiting: 'Waiting on you', review: 'Ready to review', running: 'Running', done: 'Done', failed: 'Failed' };
+  const ORDER = { waiting: 0, review: 1, running: 2, failed: 3, done: 4 };
+  const make = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  };
+  const link = (href, text, cls) => {
+    const a = make('a', cls, text);
+    a.href = href;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    return a;
+  };
+  const ago = (iso) => {
+    const ms = Date.now() - new Date(iso).getTime();
+    if (!isFinite(ms)) return '';
+    const mins = Math.max(1, Math.round(ms / 6e4));
+    if (mins < 60) return mins + ' min ago';
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
+    const days = Math.round(hrs / 24);
+    return days + (days === 1 ? ' day ago' : ' days ago');
+  };
+  const matches = (a, p) => {
+    const st = p.status || 'all';
+    if (st !== 'all' && a.status !== st) return false;
+    const q = String(p.q || '').trim().toLowerCase();
+    if (!q) return true;
+    return [a.job, a.area, a.did, a.ask, a.saved].join(' ').toLowerCase().includes(q);
+  };
+  const fail = () => make('p', 'hq-fail', 'Failed to load');
+  const byNewest = (a, b) => String(b.last).localeCompare(String(a.last));
+  return { LABEL, ORDER, make, link, ago, matches, fail, byNewest };
+})();
+
+dash.draw('sum', (el) => {
+  const d = dash.data('summary');
+  el.classList.toggle('dash-skeleton', d.status === 'loading');
+  const row = d.status === 'ok' && Array.isArray(d.data) ? d.data[0] : null;
+  el.textContent = row && row[el.dataset.k] != null ? String(row[el.dataset.k]) : '—';
+});
+
+dash.draw('waitlist', (el) => {
+  const d = dash.data('agents');
+  el.classList.toggle('dash-skeleton', d.status === 'loading');
+  if (d.status !== 'ok') {
+    el.replaceChildren(...(d.status === 'error' ? [HQ.fail()] : []));
+    return;
+  }
+  const items = d.data.filter((a) => a.status === 'waiting' || a.status === 'review').sort(HQ.byNewest);
+  el.replaceChildren(...items.map((a) => {
+    const card = HQ.make('article', 'hq-ask is-' + a.status);
+    const top = HQ.make('div', 'hq-ask-top');
+    top.append(HQ.make('span', 'hq-pill', HQ.LABEL[a.status] || a.status), HQ.make('span', 'hq-area-name', a.area));
+    if (Number(a.idle_days) >= 7) top.append(HQ.make('span', 'hq-old', 'Over a week old'));
+    card.append(
+      top,
+      HQ.link(a.link, a.job, 'hq-ask-job'),
+      HQ.make('p', 'hq-ask-text', a.ask || 'Open the chat to see what it needs.'),
+      HQ.make('p', 'hq-meta', 'Last update ' + HQ.ago(a.last) + ' · from your ' + String(a.source || '').toLowerCase()),
+    );
+    return card;
+  }));
+});
+
+dash.draw('areas', (el) => {
+  const d = dash.data('agents');
+  el.classList.toggle('dash-skeleton', d.status === 'loading');
+  if (d.status !== 'ok') {
+    el.replaceChildren(...(d.status === 'error' ? [HQ.fail()] : []));
+    return;
+  }
+  const p = dash.params();
+  const groups = d3.groups(d.data.filter((a) => HQ.matches(a, p)), (a) => a.area);
+  const needs = (list) => list.filter((a) => a.status === 'waiting' || a.status === 'review').length;
+  groups.sort((x, y) => needs(y[1]) - needs(x[1]) || y[1].length - x[1].length || x[0].localeCompare(y[0]));
+  el.replaceChildren(...groups.map(([area, list]) => {
+    const box = HQ.make('section', 'hq-area');
+    const head = HQ.make('header', 'hq-area-head');
+    const waiting = needs(list);
+    const count = list.length + (list.length === 1 ? ' chat' : ' chats') + (waiting ? ' · ' + waiting + ' need you' : '');
+    head.append(HQ.make('h3', null, area), HQ.make('span', 'hq-area-count', count));
+    const ul = HQ.make('ul', 'hq-jobs');
+    list.slice().sort((a, b) => (HQ.ORDER[a.status] ?? 9) - (HQ.ORDER[b.status] ?? 9) || HQ.byNewest(a, b)).forEach((a) => {
+      const li = HQ.make('li', 'hq-job is-' + a.status);
+      const top = HQ.make('div', 'hq-job-top');
+      top.append(HQ.make('span', 'hq-pill', HQ.LABEL[a.status] || a.status), HQ.link(a.link, a.job, 'hq-job-title'));
+      li.append(top);
+      if (a.ask) li.append(HQ.make('p', 'hq-job-ask', a.ask));
+      if (a.did) li.append(HQ.make('p', 'hq-did', a.did));
+      li.append(HQ.make('p', 'hq-meta', (a.saved ? 'Saved to ' + a.saved : 'No saved file named') + ' · ' + HQ.ago(a.last)));
+      ul.append(li);
+    });
+    box.append(head, ul);
+    return box;
+  }));
+});
+
+dash.draw('where', (tb) => {
+  const d = dash.data('where');
+  if (d.status !== 'ok' || !Array.isArray(d.data)) { tb.replaceChildren(); return; }
+  const td = (t) => HQ.make('td', null, t);
+  const rows = d.data.slice().sort((a, b) => (b.chats + b.tasks) - (a.chats + a.tasks) || a.place.localeCompare(b.place));
+  tb.replaceChildren(...rows.map((p) => {
+    const tr = document.createElement('tr');
+    const key = document.createElement('td');
+    if (p.link) key.append(HQ.link(p.link, p.place)); else key.textContent = p.place;
+    tr.append(key, td(p.what), td(String(p.chats)), td(String(p.tasks)));
+    return tr;
+  }));
+});
+
+dash.draw('sched', (tb) => {
+  const d = dash.data('scheduled');
+  if (d.status !== 'ok' || !Array.isArray(d.data)) { tb.replaceChildren(); return; }
+  const td = (t) => HQ.make('td', null, t == null ? '' : String(t));
+  tb.replaceChildren(...d.data.map((s) => {
+    const tr = document.createElement('tr');
+    tr.className = s.state === 'On' ? 'is-on' : 'is-paused';
+    tr.append(td(s.name), td(s.schedule), td(s.state), td(s.last_run_text), td(s.last_result), td(s.next_run_text), td(s.reports_to));
+    return tr;
+  }));
+});
+</script>
+
+<script>
+(() => {
+  const go = (id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    dash.setLink(id);
+  };
+  document.querySelectorAll('.hq-tile[data-status]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const cur = dash.params().status || 'all';
+      dash.setParams({ status: cur === b.dataset.status ? 'all' : b.dataset.status });
+      go('areas');
+    });
+  });
+  document.querySelectorAll('.hq-chip[data-status]').forEach((b) => {
+    b.addEventListener('click', () => dash.setParams({ status: b.dataset.status }));
+  });
+  document.querySelectorAll('.hq-q').forEach((input) => {
+    input.addEventListener('input', () => dash.setParams({ q: input.value.trim() || null }));
+  });
+
+  let opened = false;
+  dash.onData(() => {
+    const p = dash.params();
+    const st = p.status || 'all';
+    document.querySelectorAll('[data-status]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.status === st)));
+    document.querySelectorAll('.hq-q').forEach((i) => { if (i !== document.activeElement) i.value = p.q || ''; });
+
+    const s = dash.data('summary');
+    const row = s.status === 'ok' && Array.isArray(s.data) ? s.data[0] : null;
+    const none = !!row && row.needs === 0;
+    document.querySelectorAll('[data-take]').forEach((el) => { el.hidden = (el.dataset.take === 'none') !== none; });
+
+    const a = dash.data('agents');
+    const ok = a.status === 'ok' && Array.isArray(a.data);
+    const anyMatch = ok && a.data.some((x) => HQ.matches(x, p));
+    const anyWait = ok && a.data.some((x) => x.status === 'waiting' || x.status === 'review');
+    document.querySelectorAll('[data-empty="areas"]').forEach((el) => { el.hidden = !ok || anyMatch; });
+    document.querySelectorAll('[data-empty="waiting"]').forEach((el) => { el.hidden = !ok || anyWait; });
+
+    if (ok && !opened) {
+      opened = true;
+      const named = location.hash.slice(1);
+      if (named && document.getElementById(named)) requestAnimationFrame(() => go(named));
+    }
+  });
+})();
+</script>
