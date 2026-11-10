@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crypto Flip Tracker</title>
+<meta name="description" content="Which top coins have flipped from a bearish to a bullish trend on the daily and weekly charts, which are about to, your watchlist, and a Q&A picker to choose one or two.">
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #14171d; --muted: #5d6570; --line: #e2e5ea;
+    --bull: #178a4c; --bull-bg: #e6f5ec; --bear: #c93b3b; --bear-bg: #fbe9e9; --warm: #b7791f; --warm-bg: #fdf3df;
+    --accent: #2f5fd6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1216; --panel: #171b21; --ink: #e8eaee; --muted: #9aa3ae; --line: #2a3038;
+      --bull: #4fc785; --bull-bg: #133423; --bear: #ef6b6b; --bear-bg: #3a1c1c; --warm: #e0a94a; --warm-bg: #3a2e14;
+      --accent: #7fa3ff;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1216; --panel: #171b21; --ink: #e8eaee; --muted: #9aa3ae; --line: #2a3038;
+    --bull: #4fc785; --bull-bg: #133423; --bear: #ef6b6b; --bear-bg: #3a1c1c; --warm: #e0a94a; --warm-bg: #3a2e14;
+    --accent: #7fa3ff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 32px 0 10px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .pulse { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .tile .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .tile .v { font-size: 22px; font-weight: 600; }
+  .tile .s { color: var(--muted); font-size: 12px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 24px 0 12px; }
+  .tabs button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: 14px; }
+  .tabs button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; }
+  th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .bull { background: var(--bull-bg); color: var(--bull); }
+  .bear { background: var(--bear-bg); color: var(--bear); }
+  .warm { background: var(--warm-bg); color: var(--warm); }
+  .why { white-space: normal; color: var(--muted); font-size: 13px; min-width: 260px; }
+  .empty { padding: 18px; color: var(--muted); }
+  .picker { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .q { margin: 0 0 14px; }
+  .q label { display: block; font-weight: 600; margin-bottom: 6px; }
+  .q select { width: 100%; max-width: 480px; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 14px; }
+  .picker button { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font-size: 15px; cursor: pointer; }
+  .pick { border-top: 1px solid var(--line); padding: 14px 0 4px; margin-top: 14px; }
+  .pick h3 { margin: 0 0 6px; font-size: 17px; }
+  .pick ul { margin: 0; padding-left: 18px; color: var(--muted); }
+  .note { color: var(--muted); font-size: 13px; }
+  .search { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 14px; width: 100%; max-width: 320px; margin: 0 0 12px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Crypto flip tracker</h1>
+  <p class="sub" id="asof">Loading tracker data...</p>
+
+  <div class="pulse" id="pulse"></div>
+
+  <h2>Coin lists</h2>
+  <div class="tabs" id="tabs"></div>
+  <input class="search" id="search" placeholder="Filter by name or symbol" type="search">
+  <div class="wrap" id="table"></div>
+
+  <h2>Q&amp;A picker</h2>
+  <div class="picker" id="picker"></div>
+
+  <h2>Flip log (last 180 days)</h2>
+  <div class="wrap" id="log"></div>
+
+  <footer>
+    Trend = bullish when close is above the 21 EMA and the 9 EMA is above the 21 EMA; bearish when both are below; in between keeps the last state.
+    A flip is the first completed candle where the state changes. ⭐ marks coins on your watchlist (watchlist.txt). Data from CoinGecko. Screening tool, not financial advice.
+  </footer>
+</main>
+
+<script>
+(function () {
+  const DATA_URL = '../data/tracker.json';
+  const LISTS = [
+    ['watchlist', '⭐ Watchlist', 'weekly', 'all'],
+    ['weekly_flipped', 'Weekly: flipped bullish', 'weekly', 'flipped'],
+    ['weekly_recent', 'Weekly: fresh uptrends (2-4 wks)', 'weekly', 'recent'],
+    ['weekly_about_to_flip', 'Weekly: about to flip', 'weekly', 'about'],
+    ['daily_flipped', 'Daily: flipped bullish', 'daily', 'flipped'],
+    ['daily_recent', 'Daily: fresh uptrends (2-5 days)', 'daily', 'recent'],
+    ['daily_about_to_flip', 'Daily: about to flip', 'daily', 'about'],
+    ['all', 'All coins', 'weekly', 'all'],
+  ];
+  let snap = null, active = 'weekly_flipped', sortKey = null, sortDir = 1, query = '';
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const price = (p) => p == null ? '-' : p >= 1000 ? '$' + p.toLocaleString(undefined, {maximumFractionDigits: 0}) : p >= 1 ? '$' + p.toFixed(2) : '$' + p.toFixed(4);
+  const pct = (x) => x == null ? '-' : (x >= 0 ? '+' : '') + x.toFixed(1) + '%';
+  const pill = (r) => r ? `<span class="pill ${r === 'bullish' ? 'bull' : 'bear'}">${r}</span>` : '-';
+  const sym = (c) => (c.watchlist ? '⭐ ' : '') + `<strong>${esc(c.symbol)}</strong> <span class="note">${esc(c.name)}</span>`;
+
+  function render() {
+    const s = snap;
+    const wl = (s.lists.watchlist || []).length;
+    $('asof').textContent = `As of ${s.as_of} (generated ${new Date(s.generated_at).toLocaleString()}), ${s.universe} coins screened including ${wl} on your watchlist, stablecoins and wrapped tokens excluded.`;
+    const coins = s.coins;
+    const wb = coins.filter(c => c.weekly.regime === 'bullish').length;
+    const db = coins.filter(c => c.daily.regime === 'bullish').length;
+    const btc = coins.find(c => c.id === 'bitcoin');
+    const tiles = [
+      ['Weekly breadth', `${Math.round(wb / coins.length * 100)}%`, `${wb} of ${coins.length} in a weekly uptrend`],
+      ['Daily breadth', `${Math.round(db / coins.length * 100)}%`, `${db} of ${coins.length} in a daily uptrend`],
+      ['Flipped bullish (weekly)', s.lists.weekly_flipped.length, 'in the week that just closed'],
+      ['About to flip (weekly)', s.lists.weekly_about_to_flip.length, 'bearish coins scoring 2+ of 4'],
+      ['Flipped bullish (daily)', s.lists.daily_flipped.length, 'on the last completed day'],
+    ];
+    if (btc) tiles.push(['Bitcoin', `${btc.weekly.regime || '-'} / ${btc.daily.regime || '-'}`, `weekly / daily, ${pct(btc.weekly.pct_vs_slow)} vs weekly 21 EMA`]);
+    const byId = Object.fromEntries(coins.map(c => [c.id, c]));
+    (s.lists.watchlist || []).forEach(id => {
+      const c = byId[id]; if (!c) return;
+      tiles.push([`⭐ ${c.symbol}`, `${c.weekly.regime || '-'} / ${c.daily.regime || '-'}`, `weekly / daily, ${pct(c.weekly.pct_vs_slow)} vs weekly 21 EMA` + (c.weekly.regime === 'bearish' ? `, approach ${c.weekly.approach_score}/4` : '')]);
+    });
+    $('pulse').innerHTML = tiles.map(([k, v, sub]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`).join('');
+
+    $('tabs').innerHTML = LISTS.map(([key, label]) => {
+      const n = key === 'all' ? coins.length : (s.lists[key] || []).length;
+      return `<button data-key="${key}" class="${key === active ? 'on' : ''}">${label} (${n})</button>`;
+    }).join('');
+    $('tabs').querySelectorAll('button').forEach(b => b.onclick = () => { active = b.dataset.key; sortKey = null; render(); });
+
+    renderTable();
+    renderLog();
+  }
+
+  function rowsFor() {
+    const s = snap;
+    const byId = Object.fromEntries(s.coins.map(c => [c.id, c]));
+    let rows = active === 'all' ? s.coins.slice() : (s.lists[active] || []).map(id => byId[id]).filter(Boolean);
+    if (query) rows = rows.filter(c => (c.symbol + ' ' + c.name).toLowerCase().includes(query));
+    return rows;
+  }
+
+  function renderTable() {
+    const [, , tf, kind] = LISTS.find(l => l[0] === active);
+    let rows = rowsFor();
+    const cols = [];
+    cols.push(['rank', '#', c => c.rank, true]);
+    cols.push(['coin', 'Coin', c => sym(c), false, c => c.symbol]);
+    cols.push(['price', 'Price', c => price(c.price), true, c => c.price]);
+    if (kind === 'all') {
+      cols.push(['wreg', 'Weekly', c => pill(c.weekly.regime), false, c => c.weekly.regime]);
+      cols.push(['wbars', 'Wks', c => c.weekly.bars_in_regime, true, c => c.weekly.bars_in_regime]);
+      cols.push(['dreg', 'Daily', c => pill(c.daily.regime), false, c => c.daily.regime]);
+      cols.push(['dbars', 'Days', c => c.daily.bars_in_regime, true, c => c.daily.bars_in_regime]);
+      cols.push(['wpct', 'vs W 21 EMA', c => pct(c.weekly.pct_vs_slow), true, c => c.weekly.pct_vs_slow]);
+      cols.push(['wapp', 'W approach', c => c.weekly.regime === 'bearish' ? `<span class="pill ${c.weekly.approach_score >= 2 ? 'warm' : ''}">${c.weekly.approach_score}/4</span>` : '-', true, c => c.weekly.approach_score]);
+      cols.push(['c7', '7d', c => pct(c.change_7d), true, c => c.change_7d]);
+      cols.push(['c30', '30d', c => pct(c.change_30d), true, c => c.change_30d]);
+      if (active === 'watchlist') cols.push(['why', 'Weekly notes', c => `<div class="why">${esc((c.weekly.approach_reasons || []).join('; ')) || (c.weekly.flip_date ? 'flipped bullish ' + c.weekly.flip_date : '-')}</div>`, false]);
+    } else if (kind === 'about') {
+      cols.push(['pct', 'vs 21 EMA', c => pct(c[tf].pct_vs_slow), true, c => c[tf].pct_vs_slow]);
+      cols.push(['score', 'Score', c => `<span class="pill warm">${c[tf].approach_score}/4</span>`, true, c => c[tf].approach_score]);
+      cols.push(['why', 'Why', c => `<div class="why">${esc(c[tf].approach_reasons.join('; ')) || '-'}</div>`, false]);
+      cols.push(['other', tf === 'weekly' ? 'Daily' : 'Weekly', c => pill(tf === 'weekly' ? c.daily.regime : c.weekly.regime), false]);
+    } else {
+      cols.push(['flip', 'Flipped on', c => c[tf].flip_date || '-', false, c => c[tf].flip_date]);
+      cols.push(['bars', tf === 'weekly' ? 'Wks bullish' : 'Days bullish', c => c[tf].bars_in_regime, true, c => c[tf].bars_in_regime]);
+      cols.push(['pct', 'vs 21 EMA', c => pct(c[tf].pct_vs_slow), true, c => c[tf].pct_vs_slow]);
+      cols.push(['macd', 'MACD', c => (c[tf].macd_hist || 0) > 0 ? '<span class="pill bull">+</span>' : '<span class="pill bear">-</span>', false]);
+      cols.push(['vol', 'Vol x avg', c => c[tf].volume_ratio == null ? '-' : c[tf].volume_ratio.toFixed(2), true, c => c[tf].volume_ratio]);
+      cols.push(['other', tf === 'weekly' ? 'Daily' : 'Weekly', c => pill(tf === 'weekly' ? c.daily.regime : c.weekly.regime), false]);
+      cols.push(['c7', '7d', c => pct(c.change_7d), true, c => c.change_7d]);
+      cols.push(['c30', '30d', c => pct(c.change_30d), true, c => c.change_30d]);
+      cols.push(['str', 'Strength', c => Math.round(c['strength_' + tf]), true, c => c['strength_' + tf]]);
+    }
+    if (sortKey) {
+      const col = cols.find(c => c[0] === sortKey);
+      const get = col[4] || col[2];
+      rows.sort((a, b) => { const x = get(a), y = get(b); if (x == null) return 1; if (y == null) return -1; return (x > y ? 1 : x < y ? -1 : 0) * sortDir; });
+    }
+    if (!rows.length) { $('table').innerHTML = `<div class="empty">${active === 'watchlist' ? 'Watchlist is empty. Add CoinGecko ids to watchlist.txt.' : 'Nothing in this list right now.'}</div>`; return; }
+    const head = cols.map(([k, label, , num]) => `<th class="${num ? 'num' : ''}" data-k="${k}">${label}${sortKey === k ? (sortDir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('');
+    const body = rows.map(c => '<tr>' + cols.map(([, , fn, num]) => `<td class="${num ? 'num' : ''}">${fn(c)}</td>`).join('') + '</tr>').join('');
+    $('table').innerHTML = `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+    $('table').querySelectorAll('th').forEach(th => th.onclick = () => { const k = th.dataset.k; sortDir = sortKey === k ? -sortDir : 1; sortKey = k; renderTable(); });
+  }
+
+  function renderLog() {
+    const flips = snap.flips.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 80);
+    if (!flips.length) { $('log').innerHTML = '<div class="empty">No flips logged yet.</div>'; return; }
+    $('log').innerHTML = `<table><thead><tr><th>Date</th><th>Coin</th><th>Timeframe</th><th>Direction</th><th class="num">Price then</th></tr></thead><tbody>` +
+      flips.map(f => `<tr><td>${f.date}</td><td>${f.watchlist ? '⭐ ' : ''}<strong>${esc(f.symbol)}</strong> <span class="note">${esc(f.name)} (#${f.rank})</span></td><td>${f.timeframe}</td><td>${pill(f.direction)}</td><td class="num">${price(f.price)}</td></tr>`).join('') + '</tbody></table>';
+  }
+
+  // ---- Q&A picker (mirrors picker.py) ----
+  const QUESTIONS = [
+    ['horizon', 'How long do you plan to hold?', [['days', 'A few days (swing on the daily chart)'], ['weeks', 'A few weeks (ride the weekly trend)'], ['months', 'Months (position for the cycle)']], 'weeks'],
+    ['risk', 'How big should the coins be? (watchlist coins always qualify)', [['large', 'Top 20 only'], ['mid', 'Top 50'], ['any', 'Anything tracked']], 'mid'],
+    ['style', 'Fresh flips or a little confirmation?', [['fresh', 'Fresh: flipped on the last candle'], ['confirmed', 'Confirmed: flipped 2 to 4 candles ago'], ['either', 'Either, strongest wins']], 'either'],
+    ['both', 'Require daily AND weekly both bullish?', [['yes', 'Yes'], ['no', 'No']], 'yes'],
+    ['picks', 'How many coins?', [['1', 'One'], ['2', 'Two']], '2'],
+  ];
+  function scoreCoin(c, a) {
+    const tf = a.horizon === 'days' ? 'daily' : 'weekly';
+    const r = c[tf], reasons = [];
+    if (r.regime !== 'bullish') return null;
+    const rank = c.rank || 999, watch = !!c.watchlist;
+    if (a.risk === 'large' && rank > 20 && !watch) return null;
+    if (a.risk === 'mid' && rank > 50 && !watch) return null;
+    const bars = r.bars_in_regime;
+    if (a.style === 'fresh' && bars !== 1) return null;
+    if (a.style === 'confirmed' && !(bars >= 2 && bars <= 4)) return null;
+    if (a.style === 'either' && bars > (tf === 'weekly' ? 6 : 10)) return null;
+    const both = c.daily.regime === 'bullish' && c.weekly.regime === 'bullish';
+    if (a.both === 'yes' && !both) return null;
+    let s = 0; const unit = tf === 'weekly' ? 'week' : 'day';
+    if (bars === 1) { s += 10; reasons.push(`flipped bullish on the last ${unit}ly candle`); }
+    else if (bars <= 4) { s += 8; reasons.push(`${bars} ${unit}s into a fresh uptrend`); }
+    else { s += 4; reasons.push(`${bars} ${unit}s into the uptrend`); }
+    const p = r.pct_vs_slow || 0;
+    if (p > 0 && p <= 12) { s += 6; reasons.push(`${p.toFixed(1)}% above the 21 EMA, not over-extended`); }
+    else if (p > 12) { s += 2; reasons.push(`${p.toFixed(1)}% above the 21 EMA (stretched, consider waiting for a dip)`); }
+    if ((r.macd_hist || 0) > 0) { s += 4; reasons.push('MACD histogram positive'); }
+    const vr = r.volume_ratio || 0;
+    if (vr >= 1.2) { s += 4; reasons.push(`volume ${vr.toFixed(1)}x its recent average`); }
+    if (both) { s += 5; reasons.push('daily and weekly trends agree'); }
+    if (a.horizon === 'months') s += Math.max(0, 6 - rank / 10);
+    if (watch) { s += 2; reasons.push('on your watchlist'); }
+    if (c.change_30d != null && c.change_30d > 60) { s -= 3; reasons.push(`already up ${c.change_30d.toFixed(0)}% in 30 days`); }
+    return { s, reasons };
+  }
+  function renderPicker() {
+    const el = $('picker');
+    el.innerHTML = QUESTIONS.map(([k, q, opts, d]) =>
+      `<div class="q"><label for="q_${k}">${q}</label><select id="q_${k}">${opts.map(([v, l]) => `<option value="${v}" ${v === d ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`
+    ).join('') + '<button id="go">Pick for me</button><div id="picks"></div>';
+    $('go').onclick = () => {
+      const a = Object.fromEntries(QUESTIONS.map(([k]) => [k, $('q_' + k).value]));
+      const scored = snap.coins.map(c => ({ c, r: scoreCoin(c, a) })).filter(x => x.r).sort((x, y) => y.r.s - x.r.s || (x.c.rank || 999) - (y.c.rank || 999)).slice(0, +a.picks);
+      $('picks').innerHTML = scored.length
+        ? scored.map((x, i) => `<div class="pick"><h3>${i + 1}. ${x.c.watchlist ? '⭐ ' : ''}${esc(x.c.symbol)} <span class="note">${esc(x.c.name)}, #${x.c.rank}, ${price(x.c.price)}</span></h3><ul>${x.r.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>`).join('') + '<p class="note">Screening only. Look at the chart and size the position before you buy.</p>'
+        : '<p class="pick note">Nothing fits those answers right now. Loosen the size or timeframe filters, or wait for the next flips.</p>';
+    };
+  }
+
+  $('search').addEventListener('input', (e) => { query = e.target.value.trim().toLowerCase(); renderTable(); });
+
+  fetch(DATA_URL, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => { snap = d; render(); renderPicker(); })
+    .catch(err => { $('asof').textContent = 'No tracker data yet. The first scheduled run (or a manual "Run workflow" on the Actions tab) will create data/tracker.json. (' + err.message + ')'; });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+# Coins to always screen and report, whatever their market-cap rank.
+# One CoinGecko id per line (find ids at coingecko.com, in the coin page URL).
+# Lines starting with # are ignored.
+injective-protocol

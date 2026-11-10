@@ -1,0 +1,55 @@
+name: Crypto flip tracker
+
+on:
+  schedule:
+    # Every morning at 06:20 UTC (07:20 London in summer, 06:20 in winter).
+    # The Monday run also writes the weekly bullish-flip list.
+    - cron: "20 6 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "auto = morning report (plus weekly list on Mondays); morning; weekly"
+        default: "auto"
+        type: choice
+        options: [auto, morning, weekly]
+      top:
+        description: "How many coins by market cap to screen"
+        default: "100"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: crypto-flip-tracker
+  cancel-in-progress: false
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run the tracker
+        working-directory: crypto-flip-tracker
+        env:
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          TRACKER_TOP: ${{ github.event.inputs.top || '100' }}
+        run: python flip_tracker.py --mode "${{ github.event.inputs.mode || 'auto' }}"
+
+      - name: Commit reports and tracker data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crypto-flip-tracker/data crypto-flip-tracker/reports
+          if git diff --cached --quiet; then
+            echo "Nothing new to commit."
+            exit 0
+          fi
+          git commit -m "Flip tracker: $(date -u +%Y-%m-%d) report"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
